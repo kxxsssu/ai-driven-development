@@ -9,7 +9,11 @@ const config: Config = {
   ],
   theme: {
   	extend: {
+  		fontFamily: {
+  			sans: ['var(--font-inter)', 'Pretendard', 'system-ui', 'sans-serif'],
+  		},
   		colors: {
+  			surface: 'hsl(var(--surface))',
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			card: {
