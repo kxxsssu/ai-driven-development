@@ -15,6 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { CURRENT_USER } from "@/lib/mock/images-data";
 
 export function FeedHeader() {
   const router = useRouter();
@@ -97,10 +98,10 @@ export function FeedHeader() {
               >
                 <Avatar className="h-9 w-9">
                   <AvatarImage
-                    src="https://api.dicebear.com/7.x/avataaars/svg?seed=me"
-                    alt="내 프로필"
+                    src={CURRENT_USER.avatarUrl ?? undefined}
+                    alt={`${CURRENT_USER.name} 프로필`}
                   />
-                  <AvatarFallback>ME</AvatarFallback>
+                  <AvatarFallback>{CURRENT_USER.name[0]}</AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>

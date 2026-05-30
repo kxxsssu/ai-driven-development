@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMockFeedItems, paginateMockFeed } from "@/lib/mock/feed-data";
-import type { FeedTab } from "@/types/feed";
+import type { FeedTab } from "@/types";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;

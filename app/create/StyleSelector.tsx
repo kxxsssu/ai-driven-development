@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/select";
 import { useGenerationStore } from "@/store/generation-store";
 import { STYLE_OPTIONS } from "@/lib/generation-options";
-import type { ImageStyle } from "@/types/generation";
+import type { ImageStyle } from "@/types";
 
 export function StyleSelector() {
   const selectedStyle = useGenerationStore((state) => state.selectedStyle);

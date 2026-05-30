@@ -7,7 +7,7 @@ import {
   MAX_COUNT,
   MAX_PROMPT_LENGTH,
 } from "@/lib/generation-options";
-import type { ImageRatio, ImageStyle } from "@/types/generation";
+import type { ImageRatio, ImageStyle } from "@/types";
 
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);

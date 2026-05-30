@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { CommentDialog } from "@/app/CommentDialog";
 import { useInteractionStore } from "@/store/interaction-store";
 import { useHydrated } from "@/hooks/use-hydrated";
-import type { IFeedItem } from "@/types/feed";
+import type { IFeedItem } from "@/types";
 import { cn } from "@/lib/utils";
 
 interface IFeedCardProps {

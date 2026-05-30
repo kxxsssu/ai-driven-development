@@ -6,7 +6,7 @@ import type {
   IGenerateStatusResponse,
   ImageRatio,
   ImageStyle,
-} from "@/types/generation";
+} from "@/types";
 import { MAX_COUNT, MIN_COUNT } from "@/lib/generation-options";
 
 const POLL_INTERVAL_MS = 800;

@@ -3,11 +3,14 @@
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { useGenerationStore } from "@/store/generation-store";
+import { getGenerationStatusMessage } from "@/lib/generation-options";
 
 export function GenerationLoadingOverlay() {
   const loading = useGenerationStore((state) => state.loading);
   const progress = useGenerationStore((state) => state.progress);
   const selectedStyle = useGenerationStore((state) => state.selectedStyle);
+
+  const statusMessage = getGenerationStatusMessage(progress);
 
   return (
     <Dialog open={loading}>
@@ -37,7 +40,13 @@ export function GenerationLoadingOverlay() {
               Style: <span className="text-foreground">{selectedStyle}</span>
             </p>
           )}
-          <p className="mt-1">AI가 이미지를 생성하고 있어요</p>
+          <p
+            key={statusMessage}
+            className="mt-1 animate-in fade-in duration-500"
+            aria-live="polite"
+          >
+            {statusMessage}
+          </p>
         </div>
       </DialogContent>
     </Dialog>

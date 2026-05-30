@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useInteractionStore } from "@/store/interaction-store";
 
-import type { IComment } from "@/types/feed";
+import type { IComment } from "@/types";
 
 interface ICommentDialogProps {
   imageId: string;

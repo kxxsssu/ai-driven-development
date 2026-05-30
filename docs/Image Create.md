@@ -23,9 +23,10 @@
 ├── GenerateButton.tsx
 ├── GenerationLoadingOverlay.tsx
 ├── GeneratedResultGrid.tsx
-├── GeneratedImageCard.tsx
-└── StylePreviewPanel.tsx
+└── GeneratedImageCard.tsx
 ```
+
+> 구현 반영: 스타일 미리보기(`StylePreviewPanel.tsx`)는 제거했다.
 
 ## 공통 컴포넌트
 
@@ -55,14 +56,16 @@
 - 생성 개수
 
 우측:
-- Style Preview
 - 생성 결과 Grid
 ```
+
+> 구현 반영: 스타일 미리보기는 제거되어, 우측 영역은 생성 결과 Grid만
+> 표시한다.
 
 ## Mobile (제거됨)
 
 > 구현 반영: 모바일 버전을 개발하지 않기로 하여 Mobile 레이아웃은 제거했다.
-> 데스크탑 2단 레이아웃(좌: 컨트롤 패널 / 우: 미리보기·결과 그리드)으로만
+> 데스크탑 2단 레이아웃(좌: 컨트롤 패널 / 우: 생성 결과 그리드)으로만
 > 구현한다.
 
 ---
@@ -156,30 +159,15 @@ Oil Painting
 
 ---
 
-# StylePreviewPanel
+# StylePreviewPanel (제거됨)
 
-## 파일 위치
+> 구현 반영: 스타일 미리보기 기능은 제거했다. 따라서 `StylePreviewPanel.tsx`
+> 컴포넌트와 `getStylePreviewUrl` 헬퍼도 함께 삭제했다. 아래 원본 명세는
+> 향후 재도입 시 참고용으로 보존한다.
 
-```text
-/app/create/StylePreviewPanel.tsx
-```
-
-## 기능
-
-* 선택된 스타일 미리보기 표시
-* 스타일별 대표 이미지 노출
-* Fade Transition 적용
-
-## 상태 관리
-
-```text
-previewImage: string
-```
-
-## 애니메이션
-
-* opacity transition
-* duration 300ms
+- 기능: 선택된 스타일 미리보기 표시, 스타일별 대표 이미지 노출, Fade Transition
+- 상태: `previewImage: string`
+- 애니메이션: opacity transition, duration 300ms
 
 ---
 
@@ -288,6 +276,11 @@ count: number
 
 # GenerationLoadingOverlay
 
+> Design Guide `5-4. 이미지 생성 로딩 UX` 대응 컴포넌트. 생성 대기 시간을
+> 몰입형 경험으로 전환하기 위해 화면 중앙 Overlay로 진행 상태를 실시간
+> 표시한다. (이전에 별도 문서 `Generation Loading.md`로 분리했던 명세를 본
+> 섹션으로 통합했다.)
+
 ## 파일 위치
 
 ```text
@@ -296,30 +289,126 @@ count: number
 
 ## 사용 컴포넌트
 
-* ShadCN `Dialog`
-* ShadCN `Progress`
+| 컴포넌트     | 타입     | 용도            |
+| -------- | ------ | ------------- |
+| Dialog   | ShadCN | 중앙 Overlay 구성 |
+| Progress | ShadCN | 진행률 바         |
+
+## 표시 조건
+
+```text
+generationStore.loading === true
+```
+
+* `Generate` 버튼 클릭 → `generate()` 액션 실행 시 `loading: true`로 전환되며
+  Overlay가 노출된다.
+* 완료(`completed`) / 실패(`failed`) / 타임아웃 시 `loading: false`로 전환되어
+  Overlay가 닫힌다.
 
 ## 기능
 
-* 생성 진행 상태 표시
-* 중앙 Overlay UI 제공
+* 생성 진행 상태(Progress %) 실시간 표시
+* 중앙 Overlay UI 제공 (Dark Blur 배경)
+* 진행률 구간별 상태 메시지 전환 (몰입형 대기 경험)
+* 생성 중 닫기(Dismiss) 차단으로 중복 요청 방지
+
+## 화면 구성
+
+```text
+┌──────────────────────────────────┐
+│  (Dark Blur Backdrop)            │
+│      Generating Artwork...       │  ← DialogTitle
+│            ┌──────┐              │
+│            │ 65%  │              │  ← AI Animation + Progress %
+│            └──────┘              │
+│      ▓▓▓▓▓▓▓▓░░░░░░░░  (Bar)      │  ← Progress 바
+│        Style: Cyberpunk          │  ← 스타일 정보
+│      AI가 이미지를 그리고 있어요    │  ← 단계별 상태 메시지
+└──────────────────────────────────┘
+```
 
 ## 표시 데이터
 
 ```text
-- Progress %
-- 현재 스타일
-- 상태 메시지
+loading: boolean                  # Overlay 노출 여부
+progress: number                  # 0 ~ 100
+selectedStyle: ImageStyle | null  # 현재 스타일 (없으면 Style 줄 미표시)
+statusMessage: string             # progress 구간별 메시지
 ```
+
+> 구현 반영: 세 상태값을 `useGenerationStore` selector로 개별 구독하고,
+> 상태 메시지는 `getGenerationStatusMessage(progress)` 헬퍼
+> (`lib/generation-options.ts`)로 파생한다.
+
+## 단계별 상태 메시지
+
+| Progress 구간 | 메시지              |
+| ----------- | ---------------- |
+| 0 ~ 24%     | 프롬프트를 분석하고 있어요   |
+| 25 ~ 59%    | AI가 이미지를 그리고 있어요 |
+| 60 ~ 89%    | 디테일을 다듬고 있어요     |
+| 90 ~ 99%    | 거의 다 됐어요         |
+| 100%        | 곧 결과를 보여드릴게요     |
+
+> 구현 반영: 메시지 매핑은 `lib/generation-options.ts`의
+> `getGenerationStatusMessage`에 단일 정의하고, 메시지 변경 시 `fade-in`
+> 트랜지션과 `aria-live="polite"`로 부드럽게/접근성 있게 갱신한다.
+
+## 애니메이션 가이드
+
+| 타입            | 설명          | 구현                                         |
+| ------------- | ----------- | ------------------------------------------ |
+| Pulse         | 생성 흐름 표현    | `animate-pulse` (Gradient 원형)              |
+| Ping          | AI 처리 느낌 강조 | `animate-ping` (반투명 원형 확산)                 |
+| Gradient Flow | AI 처리 느낌    | `bg-gradient-to-br from-primary to-accent` |
+| Fade In       | Overlay 진입  | ShadCN Dialog 기본 Fade (≈300ms)             |
+
+> 구현 반영: Design Guide의 Shimmer는 결과 그리드/스켈레톤 쪽에서 사용하고,
+> 본 Overlay 중앙 애니메이션은 Pulse + Ping + Gradient 조합으로 구현했다.
 
 ## UX 규칙
 
-| 항목        | 규칙               |
-| --------- | ---------------- |
-| Overlay   | 전체 화면            |
-| Blur      | backdrop-blur 적용 |
-| Dismiss   | 닫기 불가            |
-| Animation | Fade In 300ms    |
+| 항목        | 규칙               | 구현                                |
+| --------- | ---------------- | --------------------------------- |
+| Overlay   | 전체 화면 중앙         | ShadCN Dialog 중앙 정렬               |
+| Blur      | backdrop-blur 적용 | Dialog Overlay `backdrop-blur`    |
+| Dismiss   | 닫기 불가            | 외부 클릭/ESC/닫기 버튼 모두 차단             |
+| Animation | Fade In 300ms    | Dialog 기본 트랜지션                    |
+| Progress  | 실시간 갱신           | 폴링 응답마다 `progress` 갱신             |
+
+> 구현 반영: 닫기 차단은 `onPointerDownOutside`·`onEscapeKeyDown`·
+> `onInteractOutside`를 모두 `preventDefault()`하고, 우상단 닫기 버튼은
+> `[&>button]:hidden`으로 숨겨 구현했다.
+
+## 진행률(Progress) 연동
+
+```text
+generate() 실행
+→ loading: true, progress: 0
+→ POST /api/generate (jobId 발급)
+→ GET /api/generate/{jobId} 폴링 (≈800ms 간격)
+→ 응답 progress로 상태/메시지 실시간 갱신
+→ completed: progress 100 → loading: false (Overlay 닫힘)
+```
+
+| 종료 조건     | Overlay 동작            | 부가 처리       |
+| --------- | --------------------- | ----------- |
+| completed | progress 100% → 닫힘    | 결과 Grid 노출  |
+| failed    | 닫힘                    | Toast 에러 표시 |
+| timeout   | 닫힘 (30초 초과)           | Toast 에러 표시 |
+
+> 구현 반영: 폴링/진행률/에러 처리는 `store/generation-store.ts`의 `generate()`
+> 액션에 포함된다. 에러·타임아웃은 Sonner `toast.error`로 안내하고 `finally`
+> 블록에서 `loading: false`로 Overlay를 닫는다.
+
+## 접근성(A11y)
+
+| 항목          | 적용                                  |
+| ----------- | ----------------------------------- |
+| DialogTitle | `Generating Artwork...` 제공 (스크린리더용) |
+| Focus Trap  | Dialog 기본 포커스 트랩 적용                  |
+| 상태 전달       | `{progress}%` 숫자 + `aria-live` 메시지 병행 |
+| Dismiss 차단  | 생성 중 ESC/외부 클릭 비활성화                  |
 
 ---
 
@@ -374,6 +463,7 @@ count: number
 - 스타일 정보
 - Ratio 정보
 - 생성 시간
+- Download 버튼
 - Save 버튼
 - Share 버튼
 - Regenerate 버튼
@@ -381,17 +471,23 @@ count: number
 
 ## 액션 기능
 
-| 액션               | 설명            |
-| ---------------- | ------------- |
-| Save             | 내 갤러리 저장      |
-| Share            | 공개 피드 업로드     |
-| Regenerate       | 동일 Prompt 재생성 |
-| Generate Similar | 유사 생성         |
-| Reuse Style      | 스타일 재사용       |
+| 액션               | 설명               | 구현 상태          |
+| ---------------- | ---------------- | -------------- |
+| Download         | 로컬 PC에 이미지 다운로드  | 구현 (blob 다운로드) |
+| Save             | 내 갤러리 저장         | 목업 (Toast)     |
+| Share            | 공개 피드 업로드        | 목업 (Toast)     |
+| Regenerate       | 동일 Prompt 재생성    | 구현             |
+| Generate Similar | 유사 생성            | 구현 (재생성 동작)    |
+| Reuse Style      | 스타일 재사용          | 구현             |
 
-> 구현 반영: Save/Share는 DB·갤러리 미연동 상태로 Toast 알림과 버튼 상태
-> 변경만 수행하는 목업이다. Regenerate/Reuse Style은 스토어 설정을 재사용해
-> 실제로 동작한다. 실제 저장은 백엔드 연동(아래 Server Action) 단계에서 구현한다.
+> 구현 반영:
+> - **Download**: 외부(cross-origin) 이미지는 `<a download>`가 무시되므로
+>   `fetch`로 blob을 받아 ObjectURL로 다운로드한다. 파일명은
+>   `canvashub-{id}.{ext}`(MIME 기반 확장자)이며, 카드 좌상단 아이콘 버튼과
+>   더보기(⋯) 메뉴에서 실행할 수 있다.
+> - Save/Share는 DB·갤러리 미연동 상태로 Toast 알림과 버튼 상태 변경만
+>   수행하는 목업이다. Regenerate/Reuse Style은 스토어 설정을 재사용해 실제로
+>   동작한다. 실제 저장은 백엔드 연동(아래 Server Action) 단계에서 구현한다.
 
 ---
 
@@ -571,7 +667,8 @@ GET /api/generate/{jobId}
 
 * 생성 중 Overlay 표시 여부
 * Progress 실시간 갱신 여부
-* 닫기 방지 여부
+* 진행률 구간별 상태 메시지 전환 여부
+* 닫기 방지 여부 (외부 클릭 / ESC / 닫기 버튼)
 
 ---
 

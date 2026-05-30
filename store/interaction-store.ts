@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { IComment } from "@/types/feed";
+import type { IComment } from "@/types";
 
 interface IInteractionStore {
   likedIds: Record<string, boolean>;

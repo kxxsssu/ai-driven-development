@@ -1,4 +1,4 @@
-import type { IAuthUser } from "@/types/auth";
+import type { IAuthUser } from "@/types";
 
 interface IMockUser extends IAuthUser {
   password: string;

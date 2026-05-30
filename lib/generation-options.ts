@@ -1,4 +1,4 @@
-import type { ImageStyle, ImageRatio } from "@/types/generation";
+import type { ImageStyle, ImageRatio } from "@/types";
 
 export const STYLE_OPTIONS: ImageStyle[] = [
   "Anime",
@@ -14,18 +14,6 @@ export const MIN_COUNT = 1;
 export const MAX_COUNT = 4;
 export const MAX_PROMPT_LENGTH = 500;
 
-const STYLE_PREVIEW_SEED: Record<ImageStyle, string> = {
-  Anime: "style-anime",
-  Realistic: "style-realistic",
-  Fantasy: "style-fantasy",
-  Cyberpunk: "style-cyberpunk",
-  "Oil Painting": "style-oil-painting",
-};
-
-export function getStylePreviewUrl(style: ImageStyle): string {
-  return `https://picsum.photos/seed/${STYLE_PREVIEW_SEED[style]}/640/480`;
-}
-
 const RATIO_DIMENSIONS: Record<ImageRatio, { width: number; height: number }> =
   {
     "1:1": { width: 600, height: 600 },
@@ -35,4 +23,18 @@ const RATIO_DIMENSIONS: Record<ImageRatio, { width: number; height: number }> =
 
 export function getRatioDimensions(ratio: ImageRatio) {
   return RATIO_DIMENSIONS[ratio];
+}
+
+// 진행률 구간별 로딩 상태 메시지.
+// 대기 시간을 몰입형 경험으로 전환하기 위해 단계별로 안내 문구를 전환한다.
+const GENERATION_STAGES: { threshold: number; message: string }[] = [
+  { threshold: 25, message: "프롬프트를 분석하고 있어요" },
+  { threshold: 60, message: "AI가 이미지를 그리고 있어요" },
+  { threshold: 90, message: "디테일을 다듬고 있어요" },
+  { threshold: 100, message: "거의 다 됐어요" },
+];
+
+export function getGenerationStatusMessage(progress: number): string {
+  const stage = GENERATION_STAGES.find((s) => progress < s.threshold);
+  return stage?.message ?? "곧 결과를 보여드릴게요";
 }

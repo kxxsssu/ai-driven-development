@@ -2,7 +2,7 @@
 
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useFeedStore } from "@/store/feed-store";
-import type { FeedTab } from "@/types/feed";
+import type { FeedTab } from "@/types";
 
 const TAB_ITEMS: { value: FeedTab; label: string }[] = [
   { value: "trending", label: "인기" },

@@ -2,7 +2,7 @@ import type {
   IGeneratedImage,
   ImageRatio,
   ImageStyle,
-} from "@/types/generation";
+} from "@/types";
 import { getRatioDimensions } from "@/lib/generation-options";
 
 interface IMockJob {

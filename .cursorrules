@@ -43,6 +43,16 @@
   }
 ```
 
+- **인터페이스 생성은 types/index.ts 파일에 작성하세요.**
+- 예시:
+  ```typescript
+  export interface IComment {
+      id: string
+      text: string
+      author: string
+  }
+```
+
 ---
 
 ## 프로젝트 구조: 주요 폴더 구조 예시

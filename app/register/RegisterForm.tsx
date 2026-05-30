@@ -18,7 +18,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { registerSchema, type RegisterInput } from "@/lib/validations/auth";
-import type { ILoginResponse } from "@/types/auth";
+import type { ILoginResponse } from "@/types";
 
 export function RegisterForm() {
   const router = useRouter();

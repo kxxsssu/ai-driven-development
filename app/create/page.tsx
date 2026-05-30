@@ -5,7 +5,6 @@ import { StyleSelector } from "@/app/create/StyleSelector";
 import { RatioSelector } from "@/app/create/RatioSelector";
 import { GenerationCountStepper } from "@/app/create/GenerationCountStepper";
 import { GenerateButton } from "@/app/create/GenerateButton";
-import { StylePreviewPanel } from "@/app/create/StylePreviewPanel";
 import { GeneratedResultGrid } from "@/app/create/GeneratedResultGrid";
 import { GenerationLoadingOverlay } from "@/app/create/GenerationLoadingOverlay";
 
@@ -37,7 +36,6 @@ export default function CreatePage() {
           </section>
 
           <section className="flex flex-col gap-8">
-            <StylePreviewPanel />
             <GeneratedResultGrid />
           </section>
         </div>

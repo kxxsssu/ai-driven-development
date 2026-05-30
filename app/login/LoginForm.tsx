@@ -18,7 +18,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { loginSchema, type LoginInput } from "@/lib/validations/auth";
-import type { ILoginResponse } from "@/types/auth";
+import type { ILoginResponse } from "@/types";
 
 export function LoginForm() {
   const router = useRouter();

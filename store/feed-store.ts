@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { FeedTab } from "@/types/feed";
+import type { FeedTab } from "@/types";
 
 interface IFeedStore {
   activeTab: FeedTab;
