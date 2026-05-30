@@ -9,14 +9,19 @@ app/
  ├── page.tsx
  ├── loading.tsx
  ├── error.tsx
+ ├── FeedPageClient.tsx
  ├── FeedHeader.tsx
  ├── FeedTabs.tsx
  ├── FeedGrid.tsx
  ├── FeedCard.tsx
  ├── FeedSkeleton.tsx
  ├── FeedEmpty.tsx
- └── MobileBottomNav.tsx
+ └── CommentDialog.tsx
 ```
+
+> 구현 반영: 데스크탑 전용으로 개발하여 `MobileBottomNav.tsx`는 제거했고,
+> 좋아요/댓글 기능을 위해 `CommentDialog.tsx`를 추가했다. `page.tsx`는 서버
+> 컴포넌트이며 실제 화면은 클라이언트 컴포넌트 `FeedPageClient.tsx`가 조립한다.
 
 ---
 
@@ -54,10 +59,10 @@ app/
 │  └─ FeedCard        │
 │  └─ FeedCard        │
 │  └─ FeedCard        │
-├─────────────────────┤
-│ MobileBottomNav     │
 └─────────────────────┘
 ```
+
+> 구현 반영: 데스크탑 전용 레이아웃으로, 하단 `MobileBottomNav`는 제거됐다.
 
 ---
 
@@ -79,12 +84,15 @@ app/FeedHeader.tsx
 
 ## 구성 요소
 
-| 요소                  | 설명           |
-| ------------------- | ------------ |
-| Logo                | CanvasHub 로고 |
-| Search Input        | 이미지/유저 검색    |
-| Notification Button | 알림 이동        |
-| Profile Button      | 프로필 이동       |
+| 요소                  | 설명                       |
+| ------------------- | ------------------------ |
+| Logo                | CanvasHub 로고             |
+| Search Input        | 이미지/유저 검색                |
+| Notification Button | 알림 이동                    |
+| Profile Button      | 프로필 드롭다운 (프로필/갤러리/생성/로그아웃) |
+
+> 구현 반영: 프로필 버튼은 DropdownMenu로 구현되어 프로필·내 갤러리·이미지
+> 생성 이동과 **로그아웃**(로그아웃 시 `/login` 이동) 메뉴를 제공한다.
 
 ---
 
@@ -99,25 +107,17 @@ app/FeedHeader.tsx
 
 ---
 
-## 반응형 규칙
-
-### Desktop
+## 레이아웃 규칙 (Desktop 전용)
 
 ```text id="tt21gm"
 좌측: 로고
 중앙: 검색
 우측: 알림 + 프로필
+Header 높이 64px (h-16)
 ```
 
----
-
-### Mobile
-
-```text id="vxjx7n"
-검색 축소
-아이콘 중심 구성
-Header 높이 56px 유지
-```
+> 구현 반영: 모바일 버전은 개발하지 않기로 하여 Mobile 반응형 규칙은
+> 제거했다. Header는 데스크탑 기준 단일 레이아웃으로 동작한다.
 
 ---
 
@@ -211,16 +211,16 @@ app/FeedGrid.tsx
 
 ---
 
-## Grid 규칙
+## Grid 규칙 (Desktop 전용)
 
 | 화면 크기   | 컬럼 수 |
 | ------- | ---- |
 | ≥1440px | 6    |
 | ≥1024px | 4    |
-| ≥768px  | 3    |
-| <768px  | 2    |
+| 기본      | 3    |
 
-
+> 구현 반영: 모바일 미지원으로 `<768px` 2컬럼 규칙은 제거했고, 기본
+> 3컬럼(`columns-3`)에서 시작한다. CSS Columns 기반 Masonry로 구현.
 
 ---
 
@@ -268,50 +268,62 @@ app/FeedCard.tsx
 
 ## 카드 구성
 
-| 요소         | 설명             |
-| ---------- | -------------- |
-| 이미지 썸네일    | 메인 콘텐츠         |
-| 작성자 Avatar | 작성자 표시         |
-| 닉네임        | 작성자명           |
-| 좋아요 수      | 좋아요 표시         |
-| 공개 여부      | Public/Private |
+| 요소         | 설명                      |
+| ---------- | ----------------------- |
+| 이미지 썸네일    | 메인 콘텐츠 (클릭 시 상세 이동)     |
+| 작성자 Avatar | 하단 액션 바에 작성자 표시         |
+| 닉네임        | 작성자명                    |
+| 좋아요 버튼     | 좋아요 토글 + 좋아요 수          |
+| 댓글 버튼      | 댓글 모달 열기 + 댓글 수         |
+| 공개 여부      | Public/Private Badge    |
 
 ---
 
 ## 사용 컴포넌트
 
-| 컴포넌트   | 타입     |
-| ------ | ------ |
-| Card   | ShadCN |
-| Avatar | ShadCN |
-| Badge  | ShadCN |
+| 컴포넌트          | 타입     |
+| ------------- | ------ |
+| Card          | ShadCN |
+| Avatar        | ShadCN |
+| Badge         | ShadCN |
+| Dialog        | ShadCN (댓글 모달) |
+| DropdownMenu  | ShadCN |
 
 ---
 
-## Hover UX
+## 좋아요 / 댓글 (구현 반영)
 
-### Desktop
+| 기능   | 설명                                                 |
+| ---- | -------------------------------------------------- |
+| 좋아요  | 하트 버튼 토글, 좋아요 시 카운트 +1 및 빨강 표시                      |
+| 댓글   | 댓글 버튼 클릭 시 Dialog 모달에서 댓글 조회/작성 (Enter 전송)         |
+| 영속성  | Zustand `persist`(localStorage)로 새로고침·재방문에도 유지     |
+
+> 좋아요/댓글 상태는 `store/interaction-store.ts`에서 관리하며 브라우저
+> localStorage(`canvashub-interactions`)에 저장된다.
+
+---
+
+## Hover UX (Desktop 전용)
 
 * 카드 확대
 * Shadow 강화
-* Overlay 노출
-* 메타데이터 표시
+* 이미지 확대 트랜지션
 
----
-
-### Mobile
-
-* Hover 제거
-* Tap 중심 인터랙션
+> 구현 반영: 모바일 미지원으로 Mobile(Hover 제거/Tap) 규칙은 제거했다.
+> 또한 Hover 시 표시하던 작성자 이름 오버레이는 제거했고, 작성자 정보는
+> 카드 하단 액션 바에 상시 노출한다.
 
 ---
 
 ## 카드 클릭 흐름
 
 ```text id="cvt0tm"
-FeedCard 클릭
+FeedCard 이미지 클릭
 → /images/[id]
 → 이미지 상세 이동
+
+(좋아요/댓글 버튼은 카드 이동과 분리되어 동작)
 ```
 
 ---
@@ -382,48 +394,49 @@ app/FeedEmpty.tsx
 
 ---
 
-# 10. MobileBottomNav 명세
+# 10. MobileBottomNav 명세 (제거됨)
+
+> 구현 반영: 모바일 버전을 개발하지 않기로 하여 `MobileBottomNav` 컴포넌트는
+> 제거했다. 아래 원본 명세는 향후 모바일 대응 시 참고용으로 보존한다.
+
+- 표시 조건: 768px 이하 노출
+- 메뉴: Home(`/`), Create(`/create`), Gallery(`/gallery`), Profile(`/profile`)
+- UX: Safe Area 대응, 현재 메뉴 Highlight, Thumb Zone 고려
+
+---
+
+# 10-1. CommentDialog 명세 (구현 반영)
 
 ## 파일 위치
 
-```bash id="1n9mxq"
-app/MobileBottomNav.tsx
+```bash
+app/CommentDialog.tsx
 ```
 
 ---
 
-## 표시 조건
+## 목적
 
-```text id="jlwmgl"
-768px 이하에서만 노출
-```
-
----
-
-## 메뉴 구성
-
-| 메뉴      | 이동         |
-| ------- | ---------- |
-| Home    | `/`        |
-| Create  | `/create`  |
-| Gallery | `/gallery` |
-| Profile | `/profile` |
+FeedCard 댓글 조회 및 작성 모달
 
 ---
 
 ## 사용 컴포넌트
 
-| 컴포넌트   | 타입     |
-| ------ | ------ |
-| Button | ShadCN |
+| 컴포넌트     | 타입     |
+| -------- | ------ |
+| Dialog   | ShadCN |
+| Textarea | ShadCN |
+| Button   | ShadCN |
+| Avatar   | ShadCN |
 
 ---
 
-## UX 규칙
+## 기능
 
-* Safe Area 대응
-* 현재 메뉴 Highlight
-* Thumb Zone 고려
+* 댓글 목록 조회 (상대 시간 표시)
+* 댓글 작성 (Enter 전송 / Shift+Enter 줄바꿈, 최대 300자)
+* localStorage 영속 (새로고침 유지)
 
 ---
 
@@ -432,28 +445,41 @@ app/MobileBottomNav.tsx
 ## 상태 구조
 
 ```ts id="wjh03d"
+// 서버 상태 (TanStack Query, useInfiniteQuery)
 feedState = {
-  activeTab,
-  feeds,
-  cursor,
+  activeTab,      // Zustand: "trending" | "latest"
+  pages,          // 무한 스크롤 페이지 데이터
   loading,
-  fetchingMore,
+  isFetchingNextPage,
   hasNextPage
+}
+
+// 좋아요/댓글 상태 (Zustand persist, localStorage)
+interactionState = {
+  likedIds,       // Record<imageId, boolean>
+  comments        // Record<imageId, IComment[]>
 }
 ```
 
 ---
 
-## 권장 라이브러리
+## 권장 라이브러리 (구현 반영)
 
-| 목적    | 라이브러리          |
-| ----- | -------------- |
-| 서버 상태 | TanStack Query |
-| UI 상태 | Zustand        |
+| 목적         | 라이브러리                         |
+| ---------- | ----------------------------- |
+| 서버 상태(피드)  | TanStack Query (useInfiniteQuery) |
+| 탭 UI 상태    | Zustand (`store/feed-store.ts`)   |
+| 좋아요/댓글 영속  | Zustand persist (`store/interaction-store.ts`) |
 
 ---
 
 # 12. API 연동 명세
+
+> 구현 반영: 백엔드는 아직 목업이다. `app/api/feed/route.ts`가 실제 DB 대신
+> `lib/mock/feed-data.ts`의 목업 데이터(48개)를 정렬·cursor 페이지네이션하여
+> 반환한다. 이미지는 picsum.photos, 아바타는 dicebear URL을 사용한다. 응답
+> 계약(요청/응답 구조)은 그대로 유지하므로 실제 DB 연동 시 라우트 로직만
+> 교체하면 된다.
 
 # 피드 조회 API
 
@@ -608,6 +634,10 @@ type FeedItem = {
 ---
 
 # 메인페이지 Backend 기능명세서
+
+> 구현 상태: 아래 명세는 목표 설계이며, 현재는 DB·정렬·페이지네이션을
+> `lib/mock/feed-data.ts`(메모리 목업)로 시뮬레이션한다. Drizzle 스키마/DB
+> 조회는 미구현이며, 실제 백엔드 연동 시 본 명세를 기준으로 교체한다.
 
 # 1. API 구조
 

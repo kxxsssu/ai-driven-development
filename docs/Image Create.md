@@ -30,12 +30,12 @@
 ## 공통 컴포넌트
 
 ```text
-/components/
-├── PromptInput.tsx
-├── ResponsiveImageCard.tsx
-├── OptionsDropdown.tsx
-└── GeneratedImagePreview.tsx
+/components/ui/   # ShadCN 공통 컴포넌트 (select, progress, dialog, textarea 등)
 ```
+
+> 구현 반영: 별도 공통 컴포넌트(PromptInput/ResponsiveImageCard 등)를 만들지
+> 않고, 페이지 전용 컴포넌트(`app/create/*`)와 ShadCN UI 컴포넌트를 조합해
+> 구현했다. 생성 옵션/이미지 상태는 `store/generation-store.ts`로 관리한다.
 
 ---
 
@@ -59,23 +59,11 @@
 - 생성 결과 Grid
 ```
 
-## Mobile
+## Mobile (제거됨)
 
-```text
-상단:
-- Prompt 입력
-- Style 선택
-
-중단:
-- Ratio 선택
-- 생성 개수
-
-하단:
-- Generate 버튼
-
-결과:
-- 생성 후 Grid 노출
-```
+> 구현 반영: 모바일 버전을 개발하지 않기로 하여 Mobile 레이아웃은 제거했다.
+> 데스크탑 2단 레이아웃(좌: 컨트롤 패널 / 우: 미리보기·결과 그리드)으로만
+> 구현한다.
 
 ---
 
@@ -131,8 +119,9 @@ prompt: string
 ## 사용 컴포넌트
 
 * ShadCN `Select`
-* ShadCN `Popover`
-* ShadCN `Command`
+
+> 구현 반영: Popover + Command 콤보박스 대신 단순 `Select`로 구현했다.
+> (옵션 5개로 충분하며 Keyboard Navigation은 Select가 기본 제공)
 
 ## 기능
 
@@ -204,8 +193,10 @@ previewImage: string
 
 ## 사용 컴포넌트
 
-* ShadCN `Tabs`
-* ShadCN `ToggleGroup`
+* 커스텀 토글 버튼 그룹 (Button 스타일 기반)
+
+> 구현 반영: ToggleGroup 의존성 추가 없이 단일 선택 토글 버튼 그룹으로
+> 구현했다. (`role="group"` + `aria-pressed` 적용)
 
 ## 기능
 
@@ -350,14 +341,15 @@ count: number
 * 생성 이미지 Grid 표시
 * 반응형 레이아웃 제공
 
-## Grid 규칙
+## Grid 규칙 (Desktop 전용)
 
 | Width   | Columns |
 | ------- | ------- |
-| ≥1440px | 4       |
-| ≥1024px | 3       |
-| ≥768px  | 2       |
-| <768px  | 1       |
+| ≥1440px | 3       |
+| 기본      | 2       |
+
+> 구현 반영: 모바일 미지원으로 기본 2컬럼(`grid-cols-2`), 큰 화면에서 3컬럼
+> (`2xl:grid-cols-3`)으로 단순화했다.
 
 ---
 
@@ -396,6 +388,10 @@ count: number
 | Regenerate       | 동일 Prompt 재생성 |
 | Generate Similar | 유사 생성         |
 | Reuse Style      | 스타일 재사용       |
+
+> 구현 반영: Save/Share는 DB·갤러리 미연동 상태로 Toast 알림과 버튼 상태
+> 변경만 수행하는 목업이다. Regenerate/Reuse Style은 스토어 설정을 재사용해
+> 실제로 동작한다. 실제 저장은 백엔드 연동(아래 Server Action) 단계에서 구현한다.
 
 ---
 
@@ -440,8 +436,11 @@ Zustand 사용
 ## Store 위치
 
 ```text
-/stores/generation-store.ts
+store/generation-store.ts
 ```
+
+> 구현 반영: 경로는 `store/generation-store.ts`이며, 생성 요청·폴링 로직도
+> 이 스토어의 `generate()` 액션에 포함된다.
 
 ## 관리 상태
 
@@ -458,6 +457,12 @@ generatedImages
 ---
 
 # 6. API 연동 명세
+
+> 구현 반영: 백엔드는 목업이다. `POST /api/generate`가 job을 생성하고
+> `GET /api/generate/[jobId]`가 경과 시간 기반 progress(0→100%)를 반환한다.
+> Job 저장소는 `lib/mock/generation-data.ts`의 globalThis Map이며, 완료 시
+> picsum.photos 이미지를 비율에 맞춰 생성한다. 폴링 간격은 데모 체감을 위해
+> 약 800ms로 동작한다(명세상 3초 → 추후 실제 연동 시 조정).
 
 ---
 
@@ -578,6 +583,14 @@ GET /api/generate/{jobId}
 ---
 
 # 백엔드 기능명세서
+
+> 구현 상태: 생성/조회 API는 목업으로 구현됐다.
+> - `app/api/generate/route.ts` (POST, Zod 유사 검증 + jobId 발급)
+> - `app/api/generate/[jobId]/route.ts` (GET, progress·images 반환)
+> - Job 저장소: `lib/mock/generation-data.ts` globalThis Map (DB 미연동)
+> 아직 미구현: 실제 AI Provider 호출, DB 스키마(images/generation_jobs),
+> 생성 결과 저장 API(`/api/generated/save`), Server Action(`actions.ts`).
+> 본 명세를 기준으로 실제 백엔드 연동 단계에서 구현한다.
 
 ---
 

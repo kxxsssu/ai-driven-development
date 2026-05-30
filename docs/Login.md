@@ -18,6 +18,10 @@ app/
  │   └── RegisterHeader.tsx
 ```
 
+> 구현 반영: 명세 구조와 동일하게 구현됨. 데스크탑 전용 중앙 정렬 카드
+> 레이아웃이며, 폼은 React Hook Form + Zod, 오류 알림은 Sonner(Toast)를
+> 사용한다. `LoginBackground`는 회원가입 페이지에서도 재사용한다.
+
 ---
 
 # 2. 로그인 페이지 명세
@@ -303,6 +307,11 @@ loginState = {
 
 # 15. 로그인 API 연동 명세
 
+> 구현 반영: 백엔드는 목업이다. `app/api/auth/login/route.ts`가 Zod로 입력을
+> 검증하고 `lib/mock/auth-data.ts`(globalThis 유저 저장소)에서 계정을 조회한
+> 뒤, 성공 시 HttpOnly 세션 쿠키(`canvashub_session`)를 발급한다. 응답
+> 계약은 아래와 동일하다.
+
 ## 요청
 
 ```http
@@ -436,6 +445,14 @@ app/register/RegisterForm.tsx
 ---
 
 # 로그인/회원가입 Backend 기능명세서
+
+> 구현 상태: API 4종(login/register/logout/session)과 보호 라우트
+> `middleware.ts`는 구현됐으나 **목업 기반**이다.
+> - 사용자 저장소: `lib/mock/auth-data.ts`의 globalThis 메모리 (DB 미연동)
+> - 세션: HttpOnly 쿠키(`canvashub_session`)에 인코딩된 토큰 저장
+> - 비밀번호: 현재 평문 비교 (bcrypt 해싱 미적용 — 실제 연동 시 필수)
+> - 보호 라우트: `/create`, `/gallery`, `/profile` 미인증 시 `/login` 리다이렉트
+> Drizzle 스키마(users/sessions)와 bcrypt는 본 명세를 기준으로 추후 구현한다.
 
 # 1. API 구조
 
