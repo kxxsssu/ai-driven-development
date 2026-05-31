@@ -10,7 +10,7 @@ app/
  ├── loading.tsx
  ├── error.tsx
  ├── FeedPageClient.tsx
- ├── FeedHeader.tsx
+ ├── FeedHeader.tsx          # Header re-export (→ components/layout/header.tsx)
  ├── FeedTabs.tsx
  ├── FeedGrid.tsx
  ├── FeedCard.tsx
@@ -51,7 +51,7 @@ app/
 
 ```text id="pv9i4d"
 ┌─────────────────────┐
-│ FeedHeader          │
+ │ Header (공통)       │
 ├─────────────────────┤
 │ FeedTabs            │
 ├─────────────────────┤
@@ -66,44 +66,46 @@ app/
 
 ---
 
-# 4. FeedHeader 명세
+# 4. Header (공통) 명세
+
+> 상세 명세는 `Header.md` 참고. 구현 파일은 `components/layout/header.tsx`이며,
+> `app/FeedHeader.tsx`는 `Header`를 re-export하는 alias다.
 
 ## 파일 위치
 
 ```bash id="h7x4i4"
-app/FeedHeader.tsx
+components/layout/header.tsx
+app/FeedHeader.tsx          # re-export (하위 호환)
 ```
 
 ---
 
 ## 목적
 
-전역 탐색 및 사용자 액션 제공
+전역 내비게이션 및 핵심 화면 이동 제공
 
 ---
 
 ## 구성 요소
 
-| 요소                  | 설명                       |
-| ------------------- | ------------------------ |
-| Logo                | CanvasHub 로고             |
-| Search Input        | 이미지/유저 검색                |
-| Notification Button | 알림 이동                    |
-| Profile Button      | 프로필 드롭다운 (프로필/갤러리/생성/로그아웃) |
+| 요소       | 설명                       |
+| -------- | ------------------------ |
+| Logo     | CanvasHub 로고 → `/`       |
+| 내 갤러리   | 저장 작품 관리 → `/gallery`   |
+| 이미지 생성  | AI 생성 화면 → `/create` (Primary CTA) |
 
-> 구현 반영: 프로필 버튼은 DropdownMenu로 구현되어 프로필·내 갤러리·이미지
-> 생성 이동과 **로그아웃**(로그아웃 시 `/login` 이동) 메뉴를 제공한다.
+> 구현 반영: 검색·알림·프로필 드롭다운은 제거하고 로고·내 갤러리·이미지
+> 생성 3요소로 단순화했다.
 
 ---
 
 ## 사용 컴포넌트
 
-| 컴포넌트         | 타입     |
-| ------------ | ------ |
-| Input        | ShadCN |
-| Button       | ShadCN |
-| Avatar       | ShadCN |
-| DropdownMenu | ShadCN |
+| 컴포넌트   | 타입     |
+| ------ | ------ |
+| Link   | Next.js |
+| Button | ShadCN |
+| Icons  | lucide-react |
 
 ---
 
@@ -111,8 +113,7 @@ app/FeedHeader.tsx
 
 ```text id="tt21gm"
 좌측: 로고
-중앙: 검색
-우측: 알림 + 프로필
+우측: 내 갤러리 + 이미지 생성
 Header 높이 64px (h-16)
 ```
 
@@ -123,12 +124,11 @@ Header 높이 64px (h-16)
 
 ## 인터랙션
 
-| 액션       | 결과               |
-| -------- | ---------------- |
-| 로고 클릭    | `/` 이동           |
-| 검색 Enter | `/search?q=` 이동  |
-| 알림 클릭    | `/notifications` |
-| 프로필 클릭   | `/profile`       |
+| 액션        | 결과        |
+| --------- | --------- |
+| 로고 클릭     | `/` 이동    |
+| 내 갤러리 클릭  | `/gallery` |
+| 이미지 생성 클릭 | `/create`  |
 
 ---
 
@@ -547,10 +547,13 @@ type FeedItem = {
 
 ---
 
-## 검색 흐름
+## 검색 흐름 (Header 미포함)
+
+> 구현 반영: 공통 Header에서 검색 입력은 제거됐다. 검색 기능은 별도 화면/기능
+> 명세(`Main Page.md` Backend)를 참고한다.
 
 ```text id="j5jvow"
-검색 입력
+검색 입력 (별도 UI)
 → Enter
 → 검색 페이지 이동
 → 결과 Grid 출력

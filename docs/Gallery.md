@@ -2,6 +2,8 @@
 
 > Design Guide `5-6. 개인 갤러리 화면` 기준 명세다.
 >
+> 공통 Header 명세는 `Header.md`를 참고한다.
+>
 > 구현 상태: **프론트엔드 구현 완료 (백엔드 목업)**. `/gallery` 페이지와 하위
 > 컴포넌트, 목업 Route Handler(`/api/gallery`)가 구현됐다. 데이터는 중앙
 > 목업 소스(`lib/mock/images-data.ts`)에서 현재 사용자(`CURRENT_USER`)의
@@ -53,7 +55,7 @@ app/
 
 ```text
 ┌─────────────────────────────┐
-│ FeedHeader (공통)            │
+│ Header (공통)                │
 ├─────────────────────────────┤
 │ GalleryTabs   GallerySort   │
 ├─────────────────────────────┤

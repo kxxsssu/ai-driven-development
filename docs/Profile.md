@@ -2,6 +2,8 @@
 
 > Design Guide `5-8. 프로필 화면` 기준 명세다.
 >
+> 공통 Header 명세는 `Header.md`를 참고한다.
+>
 > 구현 상태: **프론트엔드 구현 완료 (백엔드 목업)**. `/profile` 페이지와 하위
 > 컴포넌트, 목업 Route Handler(`/api/profile/[id]`, `/api/profile/[id]/images`)가
 > 구현됐다. `/profile`은 현재 사용자(`CURRENT_USER`)를 의미하며, 사용자 정보/
@@ -53,7 +55,7 @@ app/
 
 ```text
 ┌─────────────────────────────┐
-│ FeedHeader (공통)            │
+│ Header (공통)                │
 ├─────────────────────────────┤
 │      ◯ 프로필 이미지         │
 │        닉네임               │  ← ProfileHeader
