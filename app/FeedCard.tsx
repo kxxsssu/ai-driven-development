@@ -2,7 +2,7 @@
 
 import { memo, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Heart, MessageCircle, Lock, Globe } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,7 @@ interface IFeedCardProps {
 }
 
 function FeedCardComponent({ item, index = 0 }: IFeedCardProps) {
+  const router = useRouter();
   const hydrated = useHydrated();
   const [commentOpen, setCommentOpen] = useState(false);
 
@@ -31,6 +32,8 @@ function FeedCardComponent({ item, index = 0 }: IFeedCardProps) {
 
   const isLiked = hydrated && liked;
   const likeCount = item.likes + (isLiked ? 1 : 0);
+
+  const navigateToDetail = () => router.push(`/images/${item.id}`);
 
   return (
     <div
@@ -46,9 +49,17 @@ function FeedCardComponent({ item, index = 0 }: IFeedCardProps) {
         animationDuration: "400ms",
       }}
     >
-      <Link
-        href={`/images/${item.id}`}
-        className="relative block w-full overflow-hidden"
+      <div
+        role="link"
+        tabIndex={0}
+        className="relative block w-full cursor-pointer overflow-hidden"
+        onClick={navigateToDetail}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            navigateToDetail();
+          }
+        }}
         aria-label={`${item.author.name}의 작품 보기`}
       >
         <Image
@@ -79,7 +90,7 @@ function FeedCardComponent({ item, index = 0 }: IFeedCardProps) {
             )}
           </Badge>
         </div>
-      </Link>
+      </div>
 
       <div className="flex items-center justify-between gap-2 px-3 py-2.5">
         <div className="flex min-w-0 items-center gap-2">

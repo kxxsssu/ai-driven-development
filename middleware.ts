@@ -25,5 +25,13 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/create/:path*", "/gallery/:path*", "/profile/:path*"],
+  // :path*만 쓰면 /gallery, /profile 루트가 누락될 수 있어 명시한다.
+  matcher: [
+    "/create",
+    "/create/:path*",
+    "/gallery",
+    "/gallery/:path*",
+    "/profile",
+    "/profile/:path*",
+  ],
 };

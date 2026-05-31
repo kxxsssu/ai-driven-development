@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { LoginBackground } from "@/app/login/LoginBackground";
 import { LoginHeader } from "@/app/login/LoginHeader";
@@ -12,7 +13,9 @@ export default function LoginPage() {
   return (
     <LoginBackground>
       <LoginHeader />
-      <LoginForm />
+      <Suspense fallback={null}>
+        <LoginForm />
+      </Suspense>
     </LoginBackground>
   );
 }

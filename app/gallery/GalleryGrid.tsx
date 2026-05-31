@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef } from "react";
 import { Loader2 } from "lucide-react";
 import { useGallery } from "@/hooks/use-gallery";
 import { useGalleryStore } from "@/store/gallery-store";
-import { useHydrated } from "@/hooks/use-hydrated";
 import { GalleryCard } from "@/app/gallery/GalleryCard";
 import { GalleryEmpty } from "@/app/gallery/GalleryEmpty";
 import { FeedSkeleton } from "@/app/FeedSkeleton";
@@ -16,7 +15,6 @@ const EMPTY_TAB_MESSAGE: Record<"public" | "private", string> = {
 };
 
 export function GalleryGrid() {
-  const hydrated = useHydrated();
   const sort = useGalleryStore((state) => state.sort);
   const activeTab = useGalleryStore((state) => state.activeTab);
   const overrides = useGalleryStore((state) => state.visibilityOverrides);
@@ -62,7 +60,7 @@ export function GalleryGrid() {
     return () => observer.disconnect();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  if (isLoading || !hydrated) {
+  if (isLoading) {
     return <FeedSkeleton />;
   }
 

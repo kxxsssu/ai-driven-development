@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { LoginBackground } from "@/app/login/LoginBackground";
 import { RegisterHeader } from "@/app/register/RegisterHeader";
@@ -12,7 +13,9 @@ export default function RegisterPage() {
   return (
     <LoginBackground>
       <RegisterHeader />
-      <RegisterForm />
+      <Suspense fallback={null}>
+        <RegisterForm />
+      </Suspense>
     </LoginBackground>
   );
 }

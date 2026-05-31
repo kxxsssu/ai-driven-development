@@ -16,5 +16,6 @@ export function useGallery(sort: GallerySort) {
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) =>
       lastPage.hasNextPage ? (lastPage.nextCursor ?? undefined) : undefined,
+    refetchOnMount: "always",
   });
 }

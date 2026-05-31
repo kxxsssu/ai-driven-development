@@ -9,7 +9,7 @@ import type {
 } from "@/types";
 
 async function getJson<T>(url: string, fallbackMessage: string): Promise<T> {
-  const response = await fetch(url);
+  const response = await fetch(url, { credentials: "include" });
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));

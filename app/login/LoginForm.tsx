@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -20,8 +20,16 @@ import {
 import { loginSchema, type LoginInput } from "@/lib/validations/auth";
 import type { ILoginResponse } from "@/types";
 
+function getSafeRedirect(path: string | null): string {
+  if (!path || !path.startsWith("/") || path.startsWith("//")) {
+    return "/";
+  }
+  return path;
+}
+
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<LoginInput>({
@@ -48,7 +56,7 @@ export function LoginForm() {
       }
 
       toast.success(`${data.user.name}님, 환영합니다!`);
-      router.push("/");
+      router.push(getSafeRedirect(searchParams.get("redirect")));
       router.refresh();
     } catch {
       toast.error("잠시 후 다시 시도해주세요.");

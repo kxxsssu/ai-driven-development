@@ -2,7 +2,7 @@
 
 import { memo } from "react";
 import Image from "next/image";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Globe, Lock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -17,8 +17,11 @@ interface IGalleryCardProps {
 }
 
 function GalleryCardComponent({ item, visibility }: IGalleryCardProps) {
+  const router = useRouter();
   const setVisibility = useGalleryStore((state) => state.setVisibility);
   const isPublic = visibility === "public";
+
+  const navigateToDetail = () => router.push(`/images/${item.id}`);
 
   const handleToggle = () => {
     const next: Visibility = isPublic ? "private" : "public";
@@ -31,9 +34,17 @@ function GalleryCardComponent({ item, visibility }: IGalleryCardProps) {
 
   return (
     <div className="group mb-4 break-inside-avoid overflow-hidden rounded-2xl bg-surface">
-      <Link
-        href={`/images/${item.id}`}
-        className="relative block w-full overflow-hidden"
+      <div
+        role="link"
+        tabIndex={0}
+        className="relative block w-full cursor-pointer overflow-hidden"
+        onClick={navigateToDetail}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            navigateToDetail();
+          }
+        }}
         aria-label={`${item.prompt} 상세 보기`}
       >
         <Image
@@ -63,7 +74,7 @@ function GalleryCardComponent({ item, visibility }: IGalleryCardProps) {
             )}
           </Badge>
         </div>
-      </Link>
+      </div>
 
       <div className="flex flex-col gap-3 p-3">
         <div className="flex items-center gap-2">
