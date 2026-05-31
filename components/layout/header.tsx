@@ -1,10 +1,15 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { Images, LogOut, Sparkles, User } from "lucide-react";
+import { usePathname } from "next/navigation";
+import {
+  Show,
+  SignInButton,
+  SignOutButton,
+  SignUpButton,
+  UserButton,
+} from "@clerk/nextjs";
+import { Images, Sparkles, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -31,21 +36,6 @@ const NAV_ITEMS = [
 
 export function Header() {
   const pathname = usePathname();
-  const router = useRouter();
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-
-  const handleLogout = async () => {
-    if (isLoggingOut) return;
-    setIsLoggingOut(true);
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-      router.push("/login");
-      router.refresh();
-    } catch {
-      toast.error("로그아웃에 실패했습니다. 다시 시도해주세요.");
-      setIsLoggingOut(false);
-    }
-  };
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-300">
@@ -65,42 +55,65 @@ export function Header() {
           className="flex shrink-0 items-center gap-2"
           aria-label="주요 메뉴"
         >
-          {NAV_ITEMS.map(({ href, label, icon: Icon, match }) => {
-            const isActive = match(pathname);
-            const isCreate = href === "/create";
+          <Show when="signed-in">
+            {NAV_ITEMS.map(({ href, label, icon: Icon, match }) => {
+              const isActive = match(pathname);
+              const isCreate = href === "/create";
 
-            return (
+              return (
+                <Button
+                  key={href}
+                  variant={isCreate ? "default" : "ghost"}
+                  size="sm"
+                  asChild
+                  className={cn(
+                    "gap-2",
+                    !isCreate &&
+                      isActive &&
+                      "bg-accent text-accent-foreground hover:bg-accent hover:text-accent-foreground",
+                  )}
+                >
+                  <Link
+                    href={href}
+                    aria-current={isActive ? "page" : undefined}
+                  >
+                    <Icon className="h-4 w-4" aria-hidden />
+                    {label}
+                  </Link>
+                </Button>
+              );
+            })}
+
+            <UserButton
+              appearance={{
+                elements: {
+                  avatarBox: "h-8 w-8",
+                },
+              }}
+            />
+
+            <SignOutButton signOutOptions={{ redirectUrl: "/login" }}>
               <Button
-                key={href}
-                variant={isCreate ? "default" : "ghost"}
+                variant="ghost"
                 size="sm"
-                asChild
-                className={cn(
-                  "gap-2",
-                  !isCreate &&
-                    isActive &&
-                    "bg-accent text-accent-foreground hover:bg-accent hover:text-accent-foreground",
-                )}
+                className="gap-2 text-muted-foreground hover:text-destructive"
+                aria-label="로그아웃"
               >
-                <Link href={href} aria-current={isActive ? "page" : undefined}>
-                  <Icon className="h-4 w-4" aria-hidden />
-                  {label}
-                </Link>
+                로그아웃
               </Button>
-            );
-          })}
+            </SignOutButton>
+          </Show>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-2 text-muted-foreground hover:text-destructive"
-            onClick={handleLogout}
-            disabled={isLoggingOut}
-            aria-label="로그아웃"
-          >
-            <LogOut className="h-4 w-4" aria-hidden />
-            {isLoggingOut ? "로그아웃 중..." : "로그아웃"}
-          </Button>
+          <Show when="signed-out">
+            <SignInButton mode="redirect" forceRedirectUrl="/">
+              <Button variant="ghost" size="sm">
+                로그인
+              </Button>
+            </SignInButton>
+            <SignUpButton mode="redirect" forceRedirectUrl="/">
+              <Button size="sm">회원가입</Button>
+            </SignUpButton>
+          </Show>
         </nav>
       </div>
     </header>

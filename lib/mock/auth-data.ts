@@ -33,8 +33,12 @@ export function findUserByEmail(email: string): IMockUser | undefined {
 }
 
 export function toAuthUser(user: IMockUser): IAuthUser {
-  const { password: _password, ...authUser } = user;
-  return authUser;
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    avatarUrl: user.avatarUrl,
+  };
 }
 
 export function createMockUser(

@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const userId = getRequestUserId(request);
+  const userId = await getRequestUserId();
   if (!userId) {
     return NextResponse.json(
       { error: "UNAUTHORIZED", message: "로그인이 필요합니다." },

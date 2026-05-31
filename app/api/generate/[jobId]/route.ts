@@ -5,8 +5,9 @@ import { getReplicateApiToken } from "@/lib/replicate/client";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { jobId: string } }
+  { params }: { params: Promise<{ jobId: string }> }
 ) {
+  const { jobId } = await params;
   if (!getReplicateApiToken()) {
     return NextResponse.json(
       {
@@ -18,7 +19,7 @@ export async function GET(
     );
   }
 
-  const userId = getRequestUserId(request);
+  const userId = await getRequestUserId();
   if (!userId) {
     return NextResponse.json(
       { error: "UNAUTHORIZED", message: "로그인이 필요합니다." },
@@ -27,7 +28,7 @@ export async function GET(
   }
 
   try {
-    const result = await getGenerationJobStatus(params.jobId, userId);
+    const result = await getGenerationJobStatus(jobId, userId);
 
     if (!result) {
       return NextResponse.json(

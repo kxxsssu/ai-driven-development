@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
@@ -22,8 +23,10 @@ export default function RootLayout({
   return (
     <html lang="ko" className="dark">
       <body className={`${inter.variable} font-sans antialiased`}>
-        <QueryProvider>{children}</QueryProvider>
-        <Toaster position="top-center" richColors />
+        <ClerkProvider signInUrl="/login" signUpUrl="/register">
+          <QueryProvider>{children}</QueryProvider>
+          <Toaster position="top-center" richColors />
+        </ClerkProvider>
       </body>
     </html>
   );

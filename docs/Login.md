@@ -1,30 +1,99 @@
 # 로그인 Frontend 기능명세서
 
+> **구현 반영 (Clerk 연동)**: 자체 이메일/비밀번호 폼 + 목업 API 대신
+> [Clerk](https://clerk.com/docs/nextjs/getting-started/quickstart) 인증을
+> 사용한다. `@clerk/nextjs@latest`, Next.js 15+, `proxy.ts` +
+> `clerkMiddleware()` 기반이다.
+
+---
+
 # 1. 페이지 구조
 
 ## 라우트 구조
 
 ```bash
 app/
+ ├── layout.tsx              # ClerkProvider
  ├── login/
  │   ├── page.tsx
- │   ├── LoginForm.tsx
+ │   ├── LoginForm.tsx       # Clerk <SignIn />
  │   ├── LoginHeader.tsx
  │   └── LoginBackground.tsx
  │
- ├── register/
- │   ├── page.tsx
- │   ├── RegisterForm.tsx
- │   └── RegisterHeader.tsx
+ └── register/
+     ├── page.tsx
+     ├── RegisterForm.tsx    # Clerk <SignUp />
+     └── RegisterHeader.tsx
+
+proxy.ts                      # clerkMiddleware + 보호 라우트
+middleware.ts                 # proxy.ts re-export (Next.js 15 호환)
 ```
 
-> 구현 반영: 명세 구조와 동일하게 구현됨. 데스크탑 전용 중앙 정렬 카드
-> 레이아웃이며, 폼은 React Hook Form + Zod, 오류 알림은 Sonner(Toast)를
-> 사용한다. `LoginBackground`는 회원가입 페이지에서도 재사용한다.
+> `LoginBackground`는 회원가입 페이지에서도 재사용한다. Clerk `<SignIn>` /
+> `<SignUp>` 컴포넌트에 CanvasHub 다크 테마 `appearance`를 적용했다.
 
 ---
 
-# 2. 로그인 페이지 명세
+# 2. Clerk 전역 설정
+
+## 패키지
+
+```bash
+npm install @clerk/nextjs
+```
+
+## 환경 변수 (`.env.local`)
+
+```bash
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+```
+
+> Clerk Keyless Mode: env 없이도 dev 서버 기동 시 임시 키가 생성될 수 있다.
+> 프로덕션/팀 협업 시 [Clerk Dashboard](https://dashboard.clerk.com/)에서
+> 키를 발급한다.
+
+## proxy.ts
+
+```typescript
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+
+const isProtectedRoute = createRouteMatcher([
+  "/create(.*)",
+  "/gallery(.*)",
+  "/profile(.*)",
+]);
+
+export default clerkMiddleware(async (auth, req) => {
+  if (isProtectedRoute(req)) {
+    await auth.protect();
+  }
+});
+
+export const config = {
+  matcher: [
+    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+    "/__clerk/(.*)",
+    "/(api|trpc)(.*)",
+  ],
+};
+```
+
+## app/layout.tsx
+
+```typescript
+import { ClerkProvider } from "@clerk/nextjs";
+
+<ClerkProvider signInUrl="/login" signUpUrl="/register">
+  {children}
+</ClerkProvider>
+```
+
+> `ClerkProvider`는 `<body>` 내부에 배치한다.
+
+---
+
+# 3. 로그인 페이지 명세
 
 ## 페이지 경로
 
@@ -36,36 +105,31 @@ app/
 
 ## 페이지 목적
 
-* 기존 사용자 인증
-* 세션 생성
-* 메인 피드 진입
+* Clerk 기반 사용자 인증
+* 세션 생성 (Clerk Session)
+* 메인 피드(`/`) 진입
 
 ---
 
-# 3. 로그인 화면 레이아웃
+# 4. 로그인 화면 레이아웃
 
 ## 전체 구조
 
 ```text
 ┌────────────────────────────┐
-│                            │
-│        CanvasHub           │
-│                            │
+│        CanvasHub           │  ← LoginHeader
+│   Create. Share. Inspire.  │
 │   ┌──────────────────┐     │
-│   │ 이메일 입력       │     │
-│   │ 비밀번호 입력     │     │
-│   │                  │     │
-│   │ 로그인 버튼       │     │
-│   │                  │     │
+│   │ Clerk SignIn UI  │     │  ← LoginForm (<SignIn />)
+│   │ (이메일/소셜 등)   │     │
 │   │ 회원가입 링크     │     │
 │   └──────────────────┘     │
-│                            │
 └────────────────────────────┘
 ```
 
 ---
 
-# 4. LoginBackground 명세
+# 5. LoginBackground 명세
 
 ## 파일 위치
 
@@ -101,7 +165,7 @@ app/login/LoginBackground.tsx
 
 ---
 
-# 5. LoginHeader 명세
+# 6. LoginHeader 명세
 
 ## 파일 위치
 
@@ -128,15 +192,7 @@ Create. Share. Inspire.
 
 ---
 
-## UX 규칙
-
-* 중앙 정렬
-* Card 상단 배치
-* 여백 24px 유지
-
----
-
-# 6. LoginForm 명세
+# 7. LoginForm 명세 (Clerk)
 
 ## 파일 위치
 
@@ -148,226 +204,39 @@ app/login/LoginForm.tsx
 
 ## 목적
 
-사용자 로그인 처리
+Clerk `<SignIn />` 컴포넌트로 로그인 UI 제공
 
 ---
 
-# 7. Form UI 구성
+## Clerk 설정
 
-## 입력 요소
-
-| 요소      | 설명       |
-| ------- | -------- |
-| 이메일 입력  | 이메일 주소   |
-| 비밀번호 입력 | 사용자 비밀번호 |
-| 로그인 버튼  | 로그인 요청   |
-| 회원가입 링크 | 회원가입 이동  |
+| prop               | 값           |
+| ------------------ | ----------- |
+| `routing`          | `"path"`    |
+| `path`             | `"/login"`  |
+| `signUpUrl`        | `"/register"` |
+| `forceRedirectUrl` | `"/"`       |
 
 ---
 
 ## 사용 컴포넌트
 
-| 컴포넌트   | 타입     |
-| ------ | ------ |
-| Card   | ShadCN |
-| Input  | ShadCN |
-| Label  | ShadCN |
-| Button | ShadCN |
-| Form   | ShadCN |
-| Toast  | ShadCN |
+| 컴포넌트   | 패키지           |
+| ------ | ------------- |
+| SignIn | @clerk/nextjs |
 
 ---
 
-# 8. Layout 규칙
+## Appearance (CanvasHub 다크 테마)
 
-| 항목            | 값     |
-| ------------- | ----- |
-| Form Width    | 420px |
-| Input Height  | 48px  |
-| Button Height | 48px  |
-| Border Radius | 16px  |
-| Gap           | 16px  |
+* Primary: `hsl(252 100% 68%)`
+* Background/Surface: Design Guide 색상과 동일
+* Input/Button 높이: 48px (`h-12`)
+* Border Radius: 12px
 
 ---
 
-# 9. Validation 규칙
-
-## 이메일
-
-| 조건     | 규칙        |
-| ------ | --------- |
-| 필수 입력  | true      |
-| 이메일 형식 | RFC 기본 형식 |
-| 최대 길이  | 255       |
-
----
-
-## 비밀번호
-
-| 조건    | 규칙   |
-| ----- | ---- |
-| 필수 입력 | true |
-| 최소 길이 | 8    |
-| 최대 길이 | 50   |
-
----
-
-# 10. 버튼 상태
-
-| 상태       | 설명       |
-| -------- | -------- |
-| Default  | 클릭 가능    |
-| Disabled | 입력 부족    |
-| Loading  | 로그인 요청 중 |
-
----
-
-# 11. 사용자 인터랙션
-
-## 로그인 흐름
-
-```text
-이메일 입력
-→ 비밀번호 입력
-→ 로그인 버튼 클릭
-→ 인증 요청
-→ 세션 생성
-→ 메인 피드 이동
-```
-
----
-
-## 회원가입 이동 흐름
-
-```text
-회원가입 클릭
-→ /register 이동
-```
-
----
-
-# 12. 로그인 실패 UX
-
-## 실패 케이스
-
-| 상황      | 메시지             |
-| ------- | --------------- |
-| 이메일 없음  | 가입되지 않은 계정입니다   |
-| 비밀번호 오류 | 비밀번호가 올바르지 않습니다 |
-| 서버 오류   | 잠시 후 다시 시도해주세요  |
-
----
-
-## UX 처리
-
-| 항목       | 처리          |
-| -------- | ----------- |
-| 오류 표시    | Toast       |
-| Focus 유지 | 이메일/비밀번호    |
-| 비밀번호 초기화 | 적용          |
-| 중복 요청 방지 | 버튼 Disabled |
-
----
-
-# 13. 접근성(A11y)
-
-| 항목                  | 적용 |
-| ------------------- | -- |
-| aria-label          | 제공 |
-| keyboard navigation | 지원 |
-| enter submit        | 지원 |
-| focus visible       | 지원 |
-
----
-
-# 14. 상태 관리
-
-## 상태 구조
-
-```ts
-loginState = {
-  email,
-  password,
-  loading,
-  error
-}
-```
-
----
-
-## 권장 방식
-
-| 목적         | 방식                     |
-| ---------- | ---------------------- |
-| Form 관리    | React Hook Form        |
-| Validation | Zod                    |
-| API 요청     | Server Action 또는 Fetch |
-
----
-
-# 15. 로그인 API 연동 명세
-
-> 구현 반영: 백엔드는 목업이다. `app/api/auth/login/route.ts`가 Zod로 입력을
-> 검증하고 `lib/mock/auth-data.ts`(globalThis 유저 저장소)에서 계정을 조회한
-> 뒤, 성공 시 HttpOnly 세션 쿠키(`canvashub_session`)를 발급한다. 응답
-> 계약은 아래와 동일하다.
-
-## 요청
-
-```http
-POST /api/auth/login
-```
-
----
-
-## Request Body
-
-```ts
-{
-  email: string
-  password: string
-}
-```
-
----
-
-## 성공 응답
-
-```ts
-{
-  success: true,
-  user: {
-    id: string,
-    name: string,
-    email: string
-  }
-}
-```
-
----
-
-## 실패 응답
-
-```ts
-{
-  success: false,
-  error: string
-}
-```
-
----
-
-# 회원가입 Frontend 기능명세서
-
-# 1. 페이지 경로
-
-```bash
-/register
-```
-
----
-
-# 2. RegisterForm 명세
+# 8. RegisterForm 명세 (Clerk)
 
 ## 파일 위치
 
@@ -377,298 +246,190 @@ app/register/RegisterForm.tsx
 
 ---
 
-## 입력 요소
+## Clerk 설정
 
-| 요소      | 설명       |
-| ------- | -------- |
-| 닉네임     | 사용자 이름   |
-| 이메일     | 로그인 이메일  |
-| 비밀번호    | 계정 비밀번호  |
-| 비밀번호 확인 | 비밀번호 재입력 |
-| 회원가입 버튼 | 계정 생성    |
+| prop               | 값           |
+| ------------------ | ----------- |
+| `routing`          | `"path"`    |
+| `path`             | `"/register"` |
+| `signInUrl`        | `"/login"`  |
+| `forceRedirectUrl` | `"/"`       |
 
 ---
 
 ## 사용 컴포넌트
 
-| 컴포넌트   | 타입     |
-| ------ | ------ |
-| Card   | ShadCN |
-| Input  | ShadCN |
-| Label  | ShadCN |
-| Button | ShadCN |
-| Form   | ShadCN |
+| 컴포넌트   | 패키지           |
+| ------ | ------------- |
+| SignUp | @clerk/nextjs |
 
 ---
 
-# 3. 회원가입 Validation
+# 9. 공통 Header 인증 UI
 
-## 닉네임
-
-| 조건    | 규칙 |
-| ----- | -- |
-| 최소 길이 | 2  |
-| 최대 길이 | 20 |
-| trim  | 적용 |
-
----
-
-## 이메일
-
-| 조건     | 규칙   |
-| ------ | ---- |
-| 중복 불가  | true |
-| 이메일 형식 | 검증   |
-
----
-
-## 비밀번호
-
-| 조건    | 규칙   |
-| ----- | ---- |
-| 최소 길이 | 8    |
-| 영문 포함 | true |
-| 숫자 포함 | true |
-
----
-
-# 4. 회원가입 흐름
-
-```text
-회원정보 입력
-→ 회원가입 요청
-→ 사용자 생성
-→ 세션 생성
-→ 메인 피드 이동
-```
-
----
-
-# 로그인/회원가입 Backend 기능명세서
-
-> 구현 상태: API 4종(login/register/logout/session)과 보호 라우트
-> `middleware.ts`는 구현됐으나 **목업 기반**이다.
-> - 사용자 저장소: `lib/mock/auth-data.ts`의 globalThis 메모리 (DB 미연동)
-> - 세션: HttpOnly 쿠키(`canvashub_session`)에 인코딩된 토큰 저장
-> - 비밀번호: 현재 평문 비교 (bcrypt 해싱 미적용 — 실제 연동 시 필수)
-> - 보호 라우트: `/create`, `/gallery`, `/profile` 미인증 시 `/login` 리다이렉트
-> Drizzle 스키마(users/sessions)와 bcrypt는 본 명세를 기준으로 추후 구현한다.
-
-# 1. API 구조
-
-## 파일 구조
+## 파일 위치
 
 ```bash
-app/
- └── api/
-     └── auth/
-         ├── login/
-         │   └── route.ts
-         ├── register/
-         │   └── route.ts
-         ├── logout/
-         │   └── route.ts
-         └── session/
-             └── route.ts
+components/layout/header.tsx
 ```
 
 ---
 
-# 2. 로그인 API
+## signed-out
 
-## Endpoint
+| 요소           | Clerk 컴포넌트    |
+| ------------ | ------------- |
+| 로그인          | SignInButton  |
+| 회원가입         | SignUpButton  |
 
-```http
-POST /api/auth/login
+```tsx
+<Show when="signed-out">
+  <SignInButton mode="redirect" forceRedirectUrl="/">...</SignInButton>
+  <SignUpButton mode="redirect" forceRedirectUrl="/">...</SignUpButton>
+</Show>
 ```
 
 ---
 
-## 처리 로직
+## signed-in
+
+| 요소     | Clerk 컴포넌트              |
+| ------ | ----------------------- |
+| 프로필 메뉴 | UserButton              |
+| 로그아웃   | SignOutButton           |
+
+```tsx
+<Show when="signed-in">
+  {/* 내 갤러리 · 프로필 · 이미지 생성 nav */}
+  <UserButton />
+  <SignOutButton signOutOptions={{ redirectUrl: "/login" }}>...</SignOutButton>
+</Show>
+```
+
+> `<Show>` 사용 (`<SignedIn>` / `<SignedOut>` deprecated)
+
+---
+
+# 10. 사용자 인터랙션
+
+## 로그인 흐름
 
 ```text
-1. 이메일 조회
-2. 비밀번호 비교
-3. 세션 생성
-4. HTTP Only Cookie 저장
-5. 사용자 정보 반환
+/login 진입
+→ Clerk SignIn UI (이메일·소셜 등)
+→ Clerk 세션 생성
+→ / (메인 피드) 리다이렉트
 ```
 
 ---
 
-## 인증 방식
+## 회원가입 흐름
 
 ```text
-Cookie Session 기반 인증
+/register 진입 (또는 SignIn 하단 링크)
+→ Clerk SignUp UI
+→ Clerk 세션 생성
+→ / 리다이렉트
 ```
 
 ---
 
-# 3. 회원가입 API
+## 로그아웃 흐름
 
-## Endpoint
-
-```http
-POST /api/auth/register
+```text
+Header 로그아웃 클릭
+→ Clerk SignOut
+→ /login 이동
 ```
 
 ---
 
-## Request Body
+# 11. 보호 라우트
 
-```ts
-{
-  name: string
-  email: string
-  password: string
+| 경로       | 인증        | 미인증 시            |
+| -------- | --------- | ---------------- |
+| /create  | Clerk 필수  | Clerk → /login   |
+| /gallery | Clerk 필수  | Clerk → /login   |
+| /profile | Clerk 필수  | Clerk → /login   |
+| /        | 공개        | —                |
+
+> `clerkMiddleware` + `createRouteMatcher` + `auth.protect()`로 처리한다.
+
+---
+
+# 12. API Route 인증 (Clerk)
+
+## 파일 위치
+
+```bash
+lib/auth/get-request-user-id.ts
+```
+
+---
+
+## 구현
+
+```typescript
+import { auth } from "@clerk/nextjs/server";
+
+export async function getRequestUserId(): Promise<string | null> {
+  const { userId } = await auth();
+  return userId;
 }
 ```
 
----
-
-## 처리 로직
-
-```text
-1. 이메일 중복 확인
-2. 비밀번호 Hash 처리
-3. 사용자 생성
-4. 세션 생성
-5. Cookie 저장
-```
+> `/api/generate` 등 보호 API에서 `await getRequestUserId()`로 Clerk
+> `userId`를 조회한다.
 
 ---
 
-# 4. 로그아웃 API
+# 13. 접근성(A11y)
 
-## Endpoint
-
-```http
-POST /api/auth/logout
-```
-
----
-
-## 처리 로직
-
-```text
-세션 제거
-Cookie 삭제
-```
+| 항목                  | 적용                          |
+| ------------------- | --------------------------- |
+| Clerk 기본 a11y       | SignIn/SignUp/UserButton 내장 |
+| keyboard navigation | Clerk + Header nav 지원       |
+| aria-label          | Header nav/버튼 제공            |
 
 ---
 
-# 5. 세션 조회 API
+# 14. (Deprecated) 목업 Auth API
 
-## Endpoint
+> **Clerk 연동 이후 아래 API는 사용하지 않는다.** 참고용으로만 남긴다.
 
-```http
-GET /api/auth/session
-```
-
----
-
-## 목적
-
-* 로그인 상태 확인
-* 사용자 정보 조회
-* 보호 라우트 검증
+| Endpoint              | 이전 용도        |
+| --------------------- | ------------ |
+| POST /api/auth/login  | 목업 로그인       |
+| POST /api/auth/register | 목업 회원가입   |
+| POST /api/auth/logout | 목업 로그아웃      |
+| GET /api/auth/session | 목업 세션 조회   |
 
 ---
 
-# 6. DB 설계
+# 15. Frontend 테스트 항목
 
-## 파일 위치
+## Clerk UI
 
-```bash
-db/schema.ts
-```
-
----
-
-# users 테이블
-
-| 컬럼           | 타입            |
-| ------------ | ------------- |
-| id           | uuid          |
-| email        | text          |
-| passwordHash | text          |
-| name         | text          |
-| avatarUrl    | text nullable |
-| createdAt    | timestamp     |
-
----
-
-# sessions 테이블
-
-| 컬럼        | 타입        |
-| --------- | --------- |
-| id        | uuid      |
-| userId    | uuid      |
-| expiresAt | timestamp |
-| createdAt | timestamp |
-
----
-
-# 7. 암호화 정책
-
-| 항목            | 방식     |
-| ------------- | ------ |
-| Password Hash | bcrypt |
-| Salt Round    | 10 이상  |
-
----
-
-# 8. Middleware 인증 처리
-
-## 파일 위치
-
-```bash
-middleware.ts
-```
-
----
+* `/login` SignIn 렌더링
+* `/register` SignUp 렌더링
+* 회원가입 후 Header `UserButton` 노출
+* 로그아웃 후 `/login` 이동
 
 ## 보호 라우트
 
-| 경로       | 인증 필요 |
-| -------- | ----- |
-| /create  | 필요    |
-| /gallery | 필요    |
-| /profile | 필요    |
+* 미로그인 `/gallery` → `/login` 리다이렉트
+* 로그인 후 `/create` 접근 가능
+
+## API
+
+* 미인증 POST `/api/generate` → 401
+* 인증 후 생성 job 정상 생성
 
 ---
 
-## 인증 흐름
+# 16. 참고 문서
 
-```text
-세션 확인
-→ 인증 여부 확인
-→ 미인증 시 /login redirect
-```
-
----
-
-# 9. Backend 테스트 항목
-
-## 인증 테스트
-
-* 로그인 성공
-* 로그인 실패
-* 회원가입 성공
-* 이메일 중복 검증
-
----
-
-## 세션 테스트
-
-* 로그인 유지 확인
-* 로그아웃 처리 확인
-* Cookie 저장 확인
-
----
-
-## 보안 테스트
-
-* Password Hash 저장 확인
-* HTTP Only Cookie 확인
-* 미인증 접근 차단 확인
+* Clerk Next.js Quickstart: https://clerk.com/docs/nextjs/getting-started/quickstart
+* Components: https://clerk.com/docs/reference/components/overview
+* Dashboard: https://dashboard.clerk.com/
+* Design Guide `5-0. 공통 헤더`, `5-1. 로그인 화면`

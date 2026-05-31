@@ -3,10 +3,11 @@ import { CURRENT_USER, getProfile } from "@/lib/mock/images-data";
 
 export async function GET(
   _request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   // "me"는 현재 로그인 사용자로 해석한다.
-  const authorId = params.id === "me" ? CURRENT_USER.id : params.id;
+  const authorId = id === "me" ? CURRENT_USER.id : id;
   const profile = getProfile(authorId);
 
   if (!profile) {

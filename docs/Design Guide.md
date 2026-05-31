@@ -155,13 +155,13 @@ Header 높이 64px (h-16)
 | 내 갤러리 클릭  | `/gallery` 이동                   |
 | 프로필 클릭    | `/profile` 이동                   |
 | 이미지 생성 클릭 | `/create` 이동                    |
-| 로그아웃 클릭   | `POST /api/auth/logout` → `/login` |
+| 로그아웃 클릭   | Clerk `SignOutButton` → `/login` |
 
 ## 로그아웃 UX
 
 ```text
 로그아웃 클릭
-→ 세션 쿠키 삭제
+→ Clerk 세션 종료
 → /login 이동
 → (선택) 회원가입 링크로 /register 이동
 ```

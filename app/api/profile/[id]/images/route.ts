@@ -8,8 +8,9 @@ const MAX_LIMIT = 50;
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const { searchParams } = request.nextUrl;
   const cursor = searchParams.get("cursor") ?? undefined;
   const limitParam = searchParams.get("limit");
@@ -26,7 +27,7 @@ export async function GET(
     limit = Math.min(parsed, MAX_LIMIT);
   }
 
-  const authorId = params.id === "me" ? CURRENT_USER.id : params.id;
+  const authorId = id === "me" ? CURRENT_USER.id : id;
 
   // 프로필에는 공개 작품만 최신순으로 노출한다.
   const items: IProfileImage[] = getPublicImagesByAuthor(authorId)
