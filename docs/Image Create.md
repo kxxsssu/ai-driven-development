@@ -386,7 +386,7 @@ statusMessage: string             # progress 구간별 메시지
 generate() 실행
 → loading: true, progress: 0
 → POST /api/generate (jobId 발급)
-→ GET /api/generate/{jobId} 폴링 (≈800ms 간격)
+→ GET /api/generate/{jobId} 폴링 (≈1초 간격)
 → 응답 progress로 상태/메시지 실시간 갱신
 → completed: progress 100 → loading: false (Overlay 닫힘)
 ```
@@ -395,11 +395,12 @@ generate() 실행
 | --------- | --------------------- | ----------- |
 | completed | progress 100% → 닫힘    | 결과 Grid 노출  |
 | failed    | 닫힘                    | Toast 에러 표시 |
-| timeout   | 닫힘 (30초 초과)           | Toast 에러 표시 |
+| timeout   | 닫힘 (2분 초과)           | Toast 에러 표시 |
 
 > 구현 반영: 폴링/진행률/에러 처리는 `store/generation-store.ts`의 `generate()`
-> 액션에 포함된다. 에러·타임아웃은 Sonner `toast.error`로 안내하고 `finally`
-> 블록에서 `loading: false`로 Overlay를 닫는다.
+> 액션에 포함된다. `POLL_INTERVAL_MS = 1000`, `POLL_TIMEOUT_MS = 120000`.
+> Replicate 402(크레딧 부족) 등 API 에러 메시지는 Sonner `toast.error`로 표시하고
+> `finally` 블록에서 `loading: false`로 Overlay를 닫는다.
 
 ## 접근성(A11y)
 
@@ -554,11 +555,88 @@ generatedImages
 
 # 6. API 연동 명세
 
-> 구현 반영: 백엔드는 목업이다. `POST /api/generate`가 job을 생성하고
-> `GET /api/generate/[jobId]`가 경과 시간 기반 progress(0→100%)를 반환한다.
-> Job 저장소는 `lib/mock/generation-data.ts`의 globalThis Map이며, 완료 시
-> picsum.photos 이미지를 비율에 맞춰 생성한다. 폴링 간격은 데모 체감을 위해
-> 약 800ms로 동작한다(명세상 3초 → 추후 실제 연동 시 조정).
+> 구현 반영: Replicate API(`black-forest-labs/flux-schnell`)로 실제 이미지를 생성한다.
+> `POST /api/generate`가 Replicate prediction을 생성하고 jobId를 발급하며,
+> `GET /api/generate/[jobId]`가 Replicate prediction 상태를 폴링해 progress·images를
+> 반환한다. Job 저장소는 `lib/generation/job-store.ts`의 globalThis Map(DB 미연동)이며,
+> `.env.local`에 `REPLICATE_API_TOKEN` 필요. 폴링 간격 1초, 타임아웃 2분.
+> flux-schnell input 매핑 상세는 아래 **「Replicate Input 매핑」** 및
+> 백엔드 기능명세서 **「2. Replicate / flux-schnell Input 매핑」** 참고.
+
+---
+
+# Replicate Input 매핑 (앱 옵션 → flux-schnell schema)
+
+## 모델
+
+```text
+black-forest-labs/flux-schnell
+```
+
+## 앱 Request Body → Replicate input 변환
+
+| 앱 필드 (POST /api/generate) | flux-schnell schema 필드 | 매핑 방식 |
+| --- | --- | --- |
+| `prompt` | `prompt` (required) | trim 후 스타일 suffix와 결합 |
+| `style` | *(없음)* | schema에 style 필드 없음 → `prompt` suffix로 반영 |
+| `ratio` | `aspect_ratio` | 1:1 / 16:9 / 9:16 → enum 값 직접 전달 |
+| `count` | `num_outputs` | 1~4 정수, 범위 밖 값은 clamp |
+
+## 스타일 → prompt suffix
+
+| style (ImageStyle) | prompt suffix |
+| --- | --- |
+| Anime | `anime style illustration, vibrant colors` |
+| Realistic | `photorealistic, highly detailed, natural lighting` |
+| Fantasy | `fantasy art, magical atmosphere, epic composition` |
+| Cyberpunk | `cyberpunk, neon lights, futuristic cityscape` |
+| Oil Painting | `oil painting, textured brushstrokes, classical art` |
+
+결합 예: `"사이버펑크 미래 도시"` + Cyberpunk →
+`"사이버펑크 미래 도시, cyberpunk, neon lights, futuristic cityscape"`
+
+## schema 고정값 (UI 미노출, default 명시)
+
+| schema 필드 | 전송 값 | schema default | 비고 |
+| --- | --- | --- | --- |
+| `num_inference_steps` | `4` | 4 | flux-schnell 권장값 (max 4) |
+| `go_fast` | `true` | true | fp8 최적화, 속도 우선 |
+| `megapixels` | `"1"` | `"1"` | 약 1MP 해상도 |
+| `output_format` | `"webp"` | `"webp"` | |
+| `output_quality` | `80` | 80 | 0~100 |
+| `disable_safety_checker` | `false` | false | |
+| `seed` | *(미전달)* | — | UI 없음, 매 생성 랜덤 |
+
+## Replicate input 예시 (count: 4, ratio: 16:9, style: Cyberpunk)
+
+```json
+{
+  "prompt": "사이버펑크 미래 도시, cyberpunk, neon lights, futuristic cityscape",
+  "aspect_ratio": "16:9",
+  "num_outputs": 4,
+  "num_inference_steps": 4,
+  "go_fast": true,
+  "megapixels": "1",
+  "output_format": "webp",
+  "output_quality": 80,
+  "disable_safety_checker": false
+}
+```
+
+## aspect_ratio enum (schema 전체 / 앱 지원 범위)
+
+schema enum: `1:1`, `16:9`, `21:9`, `3:2`, `2:3`, `4:5`, `5:4`, `3:4`, `4:3`, `9:16`, `9:21`
+
+앱 UI 지원: `1:1`, `16:9`, `9:16` (schema enum의 부분집합)
+
+## 구현 파일
+
+| 파일 | 역할 |
+| --- | --- |
+| `lib/replicate/flux-schnell-schema.ts` | schema 타입·enum·default·limit 상수 |
+| `lib/replicate/build-input.ts` | `buildReplicateInput()`, `buildStyledPrompt()` |
+| `lib/replicate/client.ts` | Replicate 클라이언트, `FLUX_SCHNELL_MODEL` |
+| `lib/generation/job-store.ts` | prediction 생성·상태 조회·Job 캐시 |
 
 ---
 
@@ -620,12 +698,19 @@ GET /api/generate/{jobId}
   "progress": 100,
   "images": [
     {
-      "id": "img_1",
-      "url": "/generated/1.png"
+      "id": "job_xxx_img_1",
+      "url": "https://replicate.delivery/pbxt/.../output.webp",
+      "style": "Cyberpunk",
+      "ratio": "16:9",
+      "prompt": "사이버펑크 미래 도시",
+      "createdAt": "2026-05-31T01:00:00.000Z"
     }
   ]
 }
 ```
+
+> 완료 시 `images[].url`은 Replicate CDN(`replicate.delivery`) URL이다.
+> `next.config.mjs`에 해당 도메인이 등록되어 있어야 `next/image`로 표시 가능하다.
 
 ---
 
@@ -681,13 +766,18 @@ GET /api/generate/{jobId}
 
 # 백엔드 기능명세서
 
-> 구현 상태: 생성/조회 API는 목업으로 구현됐다.
-> - `app/api/generate/route.ts` (POST, Zod 유사 검증 + jobId 발급)
-> - `app/api/generate/[jobId]/route.ts` (GET, progress·images 반환)
-> - Job 저장소: `lib/mock/generation-data.ts` globalThis Map (DB 미연동)
-> 아직 미구현: 실제 AI Provider 호출, DB 스키마(images/generation_jobs),
-> 생성 결과 저장 API(`/api/generated/save`), Server Action(`actions.ts`).
-> 본 명세를 기준으로 실제 백엔드 연동 단계에서 구현한다.
+> 구현 상태: 생성/조회 API는 Replicate(`black-forest-labs/flux-schnell`) 연동으로 구현됐다.
+> - `app/api/generate/route.ts` (POST, 검증 + Replicate prediction 생성 + jobId 발급)
+> - `app/api/generate/[jobId]/route.ts` (GET, Replicate prediction 상태 조회)
+> - Replicate 클라이언트: `lib/replicate/client.ts`
+> - Input 빌더: `lib/replicate/build-input.ts`, schema: `lib/replicate/flux-schnell-schema.ts`
+> - 에러 변환: `lib/replicate/format-error.ts` (402 크레딧 부족 등)
+> - Job 저장소: `lib/generation/job-store.ts` globalThis Map (DB 미연동)
+> - 환경 변수: `.env.local` → `REPLICATE_API_TOKEN` (`.env.example` 참고)
+> - `next.config.mjs`에 `replicate.delivery` 이미지 도메인 등록
+> - 세션 쿠키 검증: POST/GET 모두 로그인 필수, Job은 userId 소유권 확인
+> 아직 미구현: DB 스키마(images/generation_jobs), 생성 결과 저장 API
+> (`/api/generated/save`), Server Action(`actions.ts`).
 
 ---
 
@@ -712,8 +802,8 @@ POST
 ## 기능
 
 * 이미지 생성 Job 생성
-* AI Provider 호출
-* Job Queue 저장
+* Replicate `black-forest-labs/flux-schnell` prediction 호출
+* Job Queue 저장 (globalThis Map, predictionId 매핑)
 
 ## Request Body
 
@@ -725,6 +815,13 @@ POST
   "count": 4
 }
 ```
+
+| 필드 | 타입 | 제약 | Replicate 매핑 |
+| --- | --- | --- | --- |
+| prompt | string | 1~500자 | `prompt` (+ style suffix) |
+| style | ImageStyle | Anime / Realistic / Fantasy / Cyberpunk / Oil Painting | prompt suffix |
+| ratio | ImageRatio | 1:1 / 16:9 / 9:16 | `aspect_ratio` |
+| count | number | 1~4 정수 | `num_outputs` |
 
 ## Response
 
@@ -753,9 +850,18 @@ GET
 
 ## 기능
 
-* 생성 상태 반환
-* Progress 반환
-* 완료 시 이미지 URL 반환
+* Replicate prediction 상태 조회
+* Progress 반환 (starting/processing 시 경과 시간 기반 추정)
+* 완료 시 `replicate.delivery` 이미지 URL 배열 반환
+
+## Replicate status → 앱 status 매핑
+
+| Replicate prediction.status | 앱 status | progress |
+| --- | --- | --- |
+| starting | processing | 15 |
+| processing | processing | 10~95 (경과 시간 추정) |
+| succeeded | completed | 100 |
+| failed / canceled | failed | 0 |
 
 ## Response
 
@@ -791,7 +897,67 @@ POST
 
 ---
 
-# 2. DB 설계
+# 2. Replicate / flux-schnell Input 매핑
+
+## 모델 식별자
+
+```text
+black-forest-labs/flux-schnell
+```
+
+## schema required 필드
+
+* `prompt` — 유일한 required 필드. 앱에서는 사용자 prompt + style suffix를 결합해 전달.
+
+## 앱 옵션 → schema 필드 매핑
+
+| 앱 옵션 | schema 필드 | 구현 |
+| --- | --- | --- |
+| prompt | `prompt` | `buildStyledPrompt()` |
+| style | *(없음)* | `STYLE_SUFFIX` 테이블로 prompt에 append |
+| ratio | `aspect_ratio` | `APP_RATIO_TO_FLUX` (1:1, 16:9, 9:16) |
+| count | `num_outputs` | `clampCount()` (MIN 1, MAX 4) |
+
+## schema optional 필드 (고정 전송)
+
+| schema 필드 | 전송 값 | schema default | limit |
+| --- | --- | --- | --- |
+| `num_inference_steps` | 4 | 4 | 1~4 |
+| `go_fast` | true | true | boolean |
+| `megapixels` | `"1"` | `"1"` | `"1"` \| `"0.25"` |
+| `output_format` | `"webp"` | `"webp"` | webp / jpg / png |
+| `output_quality` | 80 | 80 | 0~100 |
+| `disable_safety_checker` | false | false | boolean |
+| `seed` | 미전달 | — | integer (재현용, UI 미지원) |
+
+## aspect_ratio enum (전체)
+
+```text
+1:1, 16:9, 21:9, 3:2, 2:3, 4:5, 5:4, 3:4, 4:3, 9:16, 9:21
+```
+
+앱 `ImageRatio`는 `1:1`, `16:9`, `9:16`만 지원 (enum 부분집합).
+
+## 구현 파일
+
+```text
+lib/replicate/flux-schnell-schema.ts  — IFluxSchnellInput, FLUX_SCHNELL_DEFAULTS, FLUX_SCHNELL_LIMITS
+lib/replicate/build-input.ts          — buildReplicateInput(), buildStyledPrompt()
+lib/generation/job-store.ts           — predictions.create / predictions.get 호출
+```
+
+## API 에러 코드 (Replicate 연동)
+
+| HTTP | error 코드 | 사용자 메시지 (예) |
+| --- | --- | --- |
+| 402 | INSUFFICIENT_CREDIT | Replicate 크레딧 부족 |
+| 401 | INVALID_REPLICATE_TOKEN | API 토큰 무효 |
+| 429 | RATE_LIMITED | 요청 한도 초과 |
+| 503 | REPLICATE_NOT_CONFIGURED | REPLICATE_API_TOKEN 미설정 |
+
+---
+
+# 3. DB 설계
 
 ---
 
@@ -830,7 +996,7 @@ POST
 
 ---
 
-# 3. Server Action 사용 범위
+# 4. Server Action 사용 범위
 
 ## 사용 위치
 
@@ -852,12 +1018,18 @@ POST
 
 ---
 
-# 4. 생성 Polling 전략
+# 5. 생성 Polling 전략
 
 ## 방식
 
 ```text
-3초 간격 Polling
+1초 간격 Polling (store/generation-store.ts)
+```
+
+## 타임아웃
+
+```text
+120초 (2분) — Replicate 실제 생성 시간 반영
 ```
 
 ## 종료 조건
@@ -870,27 +1042,31 @@ POST
 
 ---
 
-# 5. 에러 처리 규칙
+# 6. 에러 처리 규칙
 
 | 상황            | 처리               |
 | ------------- | ---------------- |
 | 생성 실패         | Toast 표시         |
-| API Timeout   | Retry 버튼         |
+| Replicate 402 (크레딧 부족) | Toast — billing 안내 |
+| Replicate 401/429 | Toast — 토큰/한도 안내 |
+| API Timeout (2분) | Toast — 재시도 유도 |
 | Validation 실패 | Input Highlight  |
 | 서버 오류         | Generic Error 표시 |
 
 ---
 
-# 6. 백엔드 테스트 항목
+# 7. 백엔드 테스트 항목
 
 ---
 
 # API 테스트
 
-* 생성 요청 성공 여부
-* Validation 정상 동작 여부
+* 생성 요청 성공 여부 (Replicate prediction 생성)
+* Validation 정상 동작 여부 (prompt/style/ratio/count)
+* flux-schnell input 매핑 정확성 (aspect_ratio, num_outputs, prompt suffix)
 * Progress 반환 여부
-* 완료 응답 반환 여부
+* 완료 응답 `replicate.delivery` URL 반환 여부
+* 402 크레딧 부족 시 사용자 메시지 표시 여부
 
 ---
 

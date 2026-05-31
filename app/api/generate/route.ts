@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createJob } from "@/lib/mock/generation-data";
+import { getRequestUserId } from "@/lib/auth/get-request-user-id";
+import { createGenerationJob } from "@/lib/generation/job-store";
 import {
   STYLE_OPTIONS,
   RATIO_OPTIONS,
@@ -7,9 +8,30 @@ import {
   MAX_COUNT,
   MAX_PROMPT_LENGTH,
 } from "@/lib/generation-options";
+import { getReplicateApiToken } from "@/lib/replicate/client";
+import { formatReplicateError } from "@/lib/replicate/format-error";
 import type { ImageRatio, ImageStyle } from "@/types";
 
 export async function POST(request: NextRequest) {
+  if (!getReplicateApiToken()) {
+    return NextResponse.json(
+      {
+        error: "REPLICATE_NOT_CONFIGURED",
+        message:
+          "Replicate API 토큰이 설정되지 않았습니다. .env.local에 REPLICATE_API_TOKEN을 추가해주세요.",
+      },
+      { status: 503 }
+    );
+  }
+
+  const userId = getRequestUserId(request);
+  if (!userId) {
+    return NextResponse.json(
+      { error: "UNAUTHORIZED", message: "로그인이 필요합니다." },
+      { status: 401 }
+    );
+  }
+
   const body = await request.json().catch(() => null);
 
   if (!body || typeof body !== "object") {
@@ -54,12 +76,22 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const jobId = createJob({
-    prompt: prompt.trim(),
-    style: style as ImageStyle,
-    ratio: ratio as ImageRatio,
-    count: countNum,
-  });
+  try {
+    const jobId = await createGenerationJob({
+      userId,
+      prompt: prompt.trim(),
+      style: style as ImageStyle,
+      ratio: ratio as ImageRatio,
+      count: countNum,
+    });
 
-  return NextResponse.json({ jobId, status: "queued" });
+    return NextResponse.json({ jobId, status: "queued" });
+  } catch (error) {
+    console.error("[POST /api/generate]", error);
+    const formatted = formatReplicateError(error);
+    return NextResponse.json(
+      { error: formatted.error, message: formatted.message },
+      { status: formatted.status }
+    );
+  }
 }

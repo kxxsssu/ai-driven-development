@@ -9,8 +9,8 @@ import type {
 } from "@/types";
 import { MAX_COUNT, MIN_COUNT } from "@/lib/generation-options";
 
-const POLL_INTERVAL_MS = 800;
-const POLL_TIMEOUT_MS = 30000;
+const POLL_INTERVAL_MS = 1000;
+const POLL_TIMEOUT_MS = 120000;
 
 interface IGenerationStore {
   prompt: string;
@@ -60,11 +60,15 @@ export const useGenerationStore = create<IGenerationStore>((set, get) => ({
       const createRes = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ prompt, style: selectedStyle, ratio, count }),
       });
 
       if (!createRes.ok) {
-        throw new Error("생성 요청에 실패했습니다.");
+        const errBody = (await createRes.json().catch(() => null)) as {
+          message?: string;
+        } | null;
+        throw new Error(errBody?.message ?? "생성 요청에 실패했습니다.");
       }
 
       const { jobId }: IGenerateCreateResponse = await createRes.json();
@@ -79,9 +83,16 @@ export const useGenerationStore = create<IGenerationStore>((set, get) => ({
               return;
             }
 
-            const statusRes = await fetch(`/api/generate/${jobId}`);
+            const statusRes = await fetch(`/api/generate/${jobId}`, {
+              credentials: "include",
+            });
             if (!statusRes.ok) {
-              throw new Error("생성 상태 조회에 실패했습니다.");
+              const errBody = (await statusRes.json().catch(() => null)) as {
+                message?: string;
+              } | null;
+              throw new Error(
+                errBody?.message ?? "생성 상태 조회에 실패했습니다."
+              );
             }
 
             const data: IGenerateStatusResponse = await statusRes.json();
